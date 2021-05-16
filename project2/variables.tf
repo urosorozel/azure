@@ -40,4 +40,8 @@ variable "subnet_address" {
     type = list
 }
 
-
+variable "parent_domain_name" {
+    description = "Parent DNS zone name"
+    default  = "az.skypod.io"
+    type = string
+}
