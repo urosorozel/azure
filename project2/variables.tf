@@ -42,6 +42,6 @@ variable "subnet_address" {
 
 variable "parent_domain_name" {
     description = "Parent DNS zone name"
-    default  = "az.skypod.io"
+    default  = "az.openlink.com.au"
     type = string
 }

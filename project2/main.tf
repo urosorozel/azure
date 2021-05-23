@@ -61,7 +61,7 @@ resource "azurerm_subnet" "subnet" {
 
 # Public IP for VM
 resource "azurerm_public_ip" "vm-project-public" {
-    count                       = "${var.vm_count}"
+    count                       = "${local.settings.vm_count}"
     name                         = "VMPublicIP-${count.index}"
     location                     = azurerm_resource_group.rg_project.location
     resource_group_name          = azurerm_resource_group.rg_project.name 
@@ -102,6 +102,15 @@ resource "azurerm_public_ip" "LBpublicIP" {
 }
 
 
+# DNS A record for LB
+resource "azurerm_dns_a_record" "lb-a-record" {
+  name                = "lb"
+  zone_name           = module.dns.name
+  resource_group_name = azurerm_resource_group.rg_project.name
+  ttl                 = 300
+  records             = ["${azurerm_public_ip.LBpublicIP.ip_address}"]
+}
+
 # HTTP probe
 resource "azurerm_lb_probe" "lb-probe" {
   resource_group_name = azurerm_resource_group.rg_project.name
@@ -125,7 +134,7 @@ resource "azurerm_lb_rule" "lb-rule" {
 
 # Network interface
 resource "azurerm_network_interface" "nic" {
-    count			= "${var.vm_count}"    
+    count			= "${local.settings.vm_count}"
     name                        = "nic-${count.index}"
     location                    = azurerm_resource_group.rg_project.location
     resource_group_name         = azurerm_resource_group.rg_project.name
@@ -201,7 +210,7 @@ resource "azurerm_network_security_group" "lb-sec-group" {
 
 # Port SG
 resource "azurerm_network_interface_security_group_association" "sg-port" {
-  count = "${var.vm_count}"
+  count = "${local.settings.vm_count}"
   network_interface_id      = element(azurerm_network_interface.nic.*.id, count.index)
   network_security_group_id = azurerm_network_security_group.lb-sec-group.id
 }
@@ -223,7 +232,7 @@ resource "azurerm_network_security_rule" "allow-ssh" {
 
 # Port to LB group (this is for oubound)
 resource "azurerm_network_interface_backend_address_pool_association" "pool-port" {
-  count = "${var.vm_count}"
+  count = "${local.settings.vm_count}"
   network_interface_id    = element(azurerm_network_interface.nic.*.id, count.index)
   ip_configuration_name   = "NicConfiguration" 
   backend_address_pool_id = azurerm_lb_backend_address_pool.lb-address-pool.id
@@ -256,7 +265,7 @@ data "template_file" "control_user_data" {
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
-    count                 = "${var.vm_count}"
+    count                 = "${local.settings.vm_count}"
     name                  = "vm-${count.index}"
     location              = azurerm_resource_group.rg_project.location
     availability_set_id   = azurerm_availability_set.avset.id
@@ -298,10 +307,10 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
 
 resource "azurerm_dns_a_record" "dns-a" {
-  count               = "${var.vm_count}"
+  count               = "${local.settings.vm_count}"
   name                = "${element(azurerm_linux_virtual_machine.vm,count.index).name}"
   zone_name           = module.dns.name
   resource_group_name = azurerm_resource_group.rg_project.name
   ttl                 = 300
-  records             = "${element(azurerm_linux_virtual_machine.vm,count.index).private_ip_addresses}"
+  records             = "${element(azurerm_linux_virtual_machine.vm,count.index).public_ip_addresses}"
 }
